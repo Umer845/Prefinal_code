@@ -51,7 +51,7 @@ def show():
             vehicle_make_year = st.number_input("Vehicle Make Year", min_value=1980, max_value=2025, value=2020)
 
         with col2:
-            sum_insured = st.number_input("Sum Insured", min_value=10000, max_value=10000000, value=500000)
+            sum_insured = st.number_input("Sum Insured", min_value=10000, value=500000)
             driver_age = st.number_input("Driver Age", min_value=16, max_value=100, value=30)
 
         submit = st.form_submit_button("Calculate Risk")
