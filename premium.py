@@ -56,69 +56,65 @@ def show():
         feature_cols = joblib.load("models/model_features_4.pkl")
         categorical_cols = joblib.load("models/model_cat_features_4.pkl")
     except FileNotFoundError as e:
-        model = None
         st.error(f"❌ Model not found: {e}")
+        return
 
-    if model:
-        st.subheader("Enter Vehicle Details")
+    st.subheader("Enter Vehicle Details")
 
-        with st.form(key="predict_form"):
-            vehicle_make = st.text_input("Vehicle Make", value="Toyota").upper()
-            vehicle_sub_make = st.text_input("Vehicle Model", value="Corolla").upper()
-            vehicle_make_year = st.number_input(
-                "Vehicle Make Year", min_value=1980, max_value=datetime.now().year, value=2020
-            )
-            sum_insured = st.number_input(
-                "Sum Insured", min_value=10000, value=500000
-            )
+    with st.form(key="predict_form"):
+        vehicle_make = st.text_input("Vehicle Make", value="Toyota").upper()
+        vehicle_sub_make = st.text_input("Vehicle Sub Make", value="Corolla").upper()
+        vehicle_make_year = st.number_input(
+            "Vehicle Make Year", min_value=1980, max_value=datetime.now().year, value=2020
+        )
+        sum_insured = st.number_input(
+            "Sum Insured", min_value=10000, value=500000
+        )
 
-            submit = st.form_submit_button("Predict Premium")
+        submit = st.form_submit_button("Predict Premium")
 
-        if submit:
-            vehicle_age = datetime.now().year - vehicle_make_year
+    if submit:
+        vehicle_age = datetime.now().year - vehicle_make_year
 
-            # Prepare input dict
-            input_dict = {
-                "VEHICLE MAKE": vehicle_make,
-                "VEHICLE MODEL": vehicle_sub_make,
-                "VEHICLE MAKE YEAR": vehicle_make_year,
-                "SUM INSURED": sum_insured,
-                "vehicle_age": vehicle_age
-            }
+        # Prepare input dict
+        input_dict = {
+            "VEHICLE MAKE": vehicle_make,
+            "VEHICLE MODEL": vehicle_sub_make,
+            "VEHICLE MAKE YEAR": vehicle_make_year,
+            "SUM INSURED": sum_insured,
+            "vehicle_age": vehicle_age
+        }
 
-            # Fill missing columns
-            for col in feature_cols:
-                if col not in input_dict:
-                    input_dict[col] = 0 if col not in categorical_cols else ""
+        # Fill missing columns
+        for col in feature_cols:
+            if col not in input_dict:
+                input_dict[col] = 0 if col not in categorical_cols else ""
 
-            input_df = pd.DataFrame([input_dict])[feature_cols]
+        input_df = pd.DataFrame([input_dict])[feature_cols]
 
-            # Predict monthly premium
-            monthly_premium = model.predict(input_df)[0]
+        # Predict monthly premium
+        monthly_premium = model.predict(input_df)[0]
 
-            # Calculate annual premium
-            annual_premium = monthly_premium * 11
+        # Calculate annual premium
+        annual_premium = monthly_premium * 12
 
-            # Calculate rates
-            actual_rate = (annual_premium / sum_insured * 100) if sum_insured != 0 else 0
-            min_rate = actual_rate * 0.90
-            max_rate = actual_rate * PREMIUM_RATE_MULTIPLIER
+        # Calculate rates
+        actual_rate = (annual_premium / sum_insured * 100) if sum_insured != 0 else 0
+        min_rate = actual_rate * 0.90
+        max_rate = actual_rate * PREMIUM_RATE_MULTIPLIER
 
-            # Display results
-            st.markdown(f"<div style='background-color:#2196F3; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Monthly Premium: {monthly_premium:,.2f}</h4></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='background-color:#4CAF50; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Annual Premium: {annual_premium:,.2f}</h4></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='background-color:#ae25c9; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Actual Premium Rate: {actual_rate:.2f}%</h4></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='background-color:#FF9800; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Minimum Rate: {min_rate:.2f}%</h4></div>", unsafe_allow_html=True)
-            st.markdown(f"<div style='background-color:#F44336; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Maximum Rate: {max_rate:.2f}%</h4></div>", unsafe_allow_html=True)
+        # Display results
+        st.markdown(f"<div style='background-color:#2196F3; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Monthly Premium: {monthly_premium:,.2f}</h4></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:#4CAF50; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Annual Premium: {annual_premium:,.2f}</h4></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:#ae25c9; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Actual Premium Rate: {actual_rate:.2f}%</h4></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:#FF9800; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Minimum Rate: {min_rate:.2f}%</h4></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color:#F44336; padding:15px; border-radius:8px; margin-bottom:10px;'><h4 style='color:white; margin:0;'>Maximum Rate: {max_rate:.2f}%</h4></div>", unsafe_allow_html=True)
 
-            # Store in DB
-            success = insert_into_db(vehicle_make, vehicle_sub_make, vehicle_make_year, sum_insured,
-                                     annual_premium, min_rate, actual_rate, max_rate)
-            if success:
-                st.success("✅ Data stored in database successfully.")
-
-    else:
-        st.info("⚠️ Train the model first by uploading dataset and clicking **Train Model**.")
+        # Store in DB
+        success = insert_into_db(vehicle_make, vehicle_sub_make, vehicle_make_year, sum_insured,
+                                 annual_premium, min_rate, actual_rate, max_rate)
+        if success:
+            st.success("✅ Data stored in database successfully.")
 
 if __name__ == "__main__":
     show()
